@@ -1,0 +1,8 @@
+version: "3.9"
+services:
+  thelounge:
+    image: thelounge
+    volumes:
+      - /var/opt/thelounge:/home/mobius/.thelounge
+    ports:
+      - 9001:9000
