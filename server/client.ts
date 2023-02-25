@@ -17,7 +17,7 @@ import SqliteMessageStorage from "./plugins/messageStorage/sqlite";
 import TextFileMessageStorage from "./plugins/messageStorage/text";
 import Network, {IgnoreListItem, NetworkWithIrcFramework} from "./models/network";
 import ClientManager from "./clientManager";
-import {MessageStorage, SearchQuery} from "./plugins/messageStorage/types";
+import {MessageStorage, SearchQuery, SearchResponse} from "./plugins/messageStorage/types";
 
 type OrderItem = Chan["id"] | Network["uuid"];
 type Order = OrderItem[];
@@ -138,16 +138,16 @@ class Client {
 
 		if (!Config.values.public && client.config.log) {
 			if (Config.values.messageStorage.includes("sqlite")) {
-				client.messageProvider = new SqliteMessageStorage(client);
+				client.messageProvider = new SqliteMessageStorage(client.name);
 				client.messageStorage.push(client.messageProvider);
 			}
 
 			if (Config.values.messageStorage.includes("text")) {
-				client.messageStorage.push(new TextFileMessageStorage(client));
+				client.messageStorage.push(new TextFileMessageStorage(client.name));
 			}
 
 			for (const messageStorage of client.messageStorage) {
-				messageStorage.enable();
+				messageStorage.enable().catch((e) => log.error(e));
 			}
 		}
 
@@ -616,19 +616,16 @@ class Client {
 		}
 
 		for (const messageStorage of this.messageStorage) {
-			messageStorage.deleteChannel(target.network, target.chan);
+			messageStorage.deleteChannel(target.network, target.chan).catch((e) => log.error(e));
 		}
 	}
 
-	search(query: SearchQuery) {
-		if (this.messageProvider === undefined) {
-			return Promise.resolve({
+	async search(query: SearchQuery): Promise<SearchResponse> {
+		if (!this.messageProvider?.isEnabled) {
+			return {
+				...query,
 				results: [],
-				target: "",
-				networkUuid: "",
-				offset: 0,
-				searchTerm: query?.searchTerm,
-			});
+			};
 		}
 
 		return this.messageProvider.search(query);
@@ -769,7 +766,7 @@ class Client {
 		});
 
 		for (const messageStorage of this.messageStorage) {
-			messageStorage.close();
+			messageStorage.close().catch((e) => log.error(e));
 		}
 	}
 

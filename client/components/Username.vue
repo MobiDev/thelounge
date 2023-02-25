@@ -1,6 +1,6 @@
 <template>
 	<span
-		:class="['user', nickColor, {active: active}]"
+		:class="['user', {[nickColor]: store.state.settings.coloredNicks}, {active: active}]"
 		:data-name="user.nick"
 		:user-mode="mode"
 		role="button"
@@ -17,6 +17,7 @@ import {UserInMessage} from "../../server/models/msg";
 import eventbus from "../js/eventbus";
 import colorClass from "../js/helpers/colorClass";
 import type {ClientChan, ClientNetwork, ClientUser} from "../js/types";
+import {useStore} from "../js/store";
 
 type UsernameUser = Partial<UserInMessage> & {
 	mode?: string;
@@ -70,11 +71,14 @@ export default defineComponent({
 			});
 		};
 
+		const store = useStore();
+
 		return {
 			mode,
 			nickColor,
 			hover,
 			openContextMenu,
+			store,
 		};
 	},
 });

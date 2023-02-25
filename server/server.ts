@@ -9,7 +9,6 @@ import colors from "chalk";
 import net from "net";
 
 import log from "./log";
-import pkg from "../package.json";
 import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
@@ -132,13 +131,13 @@ export default async function (
 		return res.sendFile(path.join(packagePath, fileName));
 	});
 
-	let server: import("http").Server | import("https").Server | null = null;
-
 	if (Config.values.public && (Config.values.ldap || {}).enable) {
 		log.warn(
 			"Server is public and set to use LDAP. Set to private mode if trying to use LDAP authentication."
 		);
 	}
+
+	let server: import("http").Server | import("https").Server;
 
 	if (!Config.values.https.enable) {
 		const createServer = (await import("http")).createServer;
@@ -421,8 +420,10 @@ function indexRequest(req: Request, res: Response) {
 				throw err;
 			}
 
-			const config = getServerConfiguration() as IndexTemplateConfiguration;
-			config.cacheBust = Helper.getVersionCacheBust();
+			const config: IndexTemplateConfiguration = {
+				...getServerConfiguration(),
+				...{cacheBust: Helper.getVersionCacheBust()},
+			};
 
 			res.send(_.template(file)(config));
 		}
@@ -758,9 +759,8 @@ function initializeClient(
 		});
 
 		socket.on("search", async (query) => {
-			await client.search(query).then((results) => {
-				socket.emit("search:results", results);
-			});
+			const results = await client.search(query);
+			socket.emit("search:results", results);
 		});
 
 		socket.on("mute:change", ({target, setMutedTo}) => {
@@ -886,7 +886,7 @@ function getClientConfiguration(): ClientConfiguration {
 
 	config.isUpdateAvailable = changelog.isUpdateAvailable;
 	config.applicationServerKey = manager!.webPush.vapidKeys!.publicKey;
-	config.version = pkg.version;
+	config.version = Helper.getVersionNumber();
 	config.gitCommit = Helper.getGitCommit();
 	config.themes = themes.getAll();
 	config.defaultTheme = Config.values.theme;
@@ -903,11 +903,7 @@ function getClientConfiguration(): ClientConfiguration {
 }
 
 function getServerConfiguration(): ServerConfiguration {
-	const config = _.clone(Config.values) as ServerConfiguration;
-
-	config.stylesheets = packages.getStylesheets();
-
-	return config;
+	return {...Config.values, ...{stylesheets: packages.getStylesheets()}};
 }
 
 function performAuthentication(this: Socket, data) {
