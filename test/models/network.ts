@@ -82,6 +82,8 @@ describe("Network", function () {
 	describe("#export()", function () {
 		it("should produce an valid object", function () {
 			const network = new Network({
+				discourseURL: "",
+				MC_BOT: "",
 				uuid: "hello world",
 				awayMessage: "I am away",
 				name: "networkName",
@@ -100,6 +102,8 @@ describe("Network", function () {
 			network.setNick("chillin`");
 
 			expect(network.export()).to.deep.equal({
+				discourseURL: "",
+				MC_BOT: "",
 				uuid: "hello world",
 				awayMessage: "I am away",
 				name: "networkName",

@@ -877,7 +877,7 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 
 	const defaultsOverride = {
 		nick: Config.getDefaultNick(), // expand the number part
-    // TODO: this doesn't seem right, if the client needs this as a buffer
+		// TODO: this doesn't seem right, if the client needs this as a buffer
 		// the client ought to add it on its own
 		sasl: "",
 		saslAccount: "",
@@ -898,7 +898,6 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 			"MC_BOT",
 		]) as Defaults;
 	}
-		
 
 	if (!Config.values.lockNetwork) {
 		const defaults: ConfigNetDefaults = {
