@@ -13,7 +13,7 @@ import Client from "./client";
 import ClientManager from "./clientManager";
 import Uploader from "./plugins/uploader";
 import Helper from "./helper";
-import Config, {ConfigType} from "./config";
+import Config, {ConfigType, Defaults} from "./config";
 import Identification from "./identification";
 import changelog from "./plugins/changelog";
 import inputs from "./plugins/inputs";
@@ -883,11 +883,11 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 		saslAccount: "",
 		saslPassword: "",
 	};
-	if (!config.lockNetwork) {
-		config.defaults = _.clone(Config.values.defaults);
+	if (!Config.values.lockNetwork) {
+		Config.values.defaults = _.clone(Config.values.defaults);
 	} else {
 		// Only send defaults that are visible on the client
-		config.defaults = _.pick(Config.values.defaults, [
+		Config.values.defaults = _.pick(Config.values.defaults, [
 			"name",
 			"nick",
 			"username",
@@ -895,9 +895,7 @@ function getClientConfiguration(): SharedConfiguration | LockedSharedConfigurati
 			"realname",
 			"join",
 			"discourseURL",
-			"MC_
-      
-      ",
+			"MC_BOT",
 		]) as Defaults;
 	}
 		
