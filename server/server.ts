@@ -86,6 +86,11 @@ export default async function (
 
 	const app = express();
 
+	app.use((req, res, next) => {
+		console.log(req.url);
+		next();
+	});
+
 	if (options.dev) {
 		(await import("./plugins/dev-server")).default(app);
 	}
@@ -149,13 +154,20 @@ export default async function (
 				code_challenge_method: "S256",
 			});
 			console.log(url);
-			res.redirect(url);
+			res.setHeader("Content-Security-Policy", "script-src 'unsafe-inline'");
+			res.send(`
+				<script>
+				window.location.href = '${url}'
+				</script>
+				Logging you in, Standby
+			`);
 		});
 		app.use(express.urlencoded());
 		app.use(cookieParser());
 		app.post("/auth/callback/", async (req, res) => {
 			try {
 				const code_verifier = req.cookies["oidc_code_verifier"];
+				console.log(code_verifier);
 				const params = oidcClient.callbackParams(req);
 				const tokenSet = await oidcClient.callback(
 					Config.values.oidc.baseUrl + "/auth/callback",

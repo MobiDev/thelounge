@@ -49,6 +49,7 @@
 			<div v-if="errorShown" class="error">Authentication failed.</div>
 
 			<button :disabled="inFlight" type="submit" class="btn">Sign in</button>
+			<a href="/auth/login" class="btn btn-cancel">Sign in via OIDC</a>
 		</form>
 	</div>
 </template>
