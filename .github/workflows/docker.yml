@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: thelounge
+  IMAGE_NAME: mobidev/thelounge
 
 jobs:
   build-and-push-image:
