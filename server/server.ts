@@ -39,6 +39,9 @@ import {
 	ConfigNetDefaults,
 	LockedConfigNetDefaults,
 } from "../shared/types/config";
+import {generators} from "openid-client";
+import cookieParser from "cookie-parser";
+import {warn} from "console";
 
 type ServerOptions = {
 	dev: boolean;
@@ -129,6 +132,82 @@ export default async function (
 		const packagePath = Config.getPackageModulePath(packageName);
 		return res.sendFile(path.join(packagePath, fileName));
 	});
+
+	if (Config.values.oidc?.enabled) {
+		const oidcClient = await Config.getOidcClient();
+		app.get("/auth/login/", (req, res) => {
+			const code_verifier = generators.codeVerifier();
+			res.cookie("oidc_code_verifier", code_verifier, {httpOnly: true, maxAge: 50000});
+			// store the code_verifier in your framework's session mechanism, if it is a cookie based solution
+			// it should be httpOnly (not readable by javascript) and encrypted.
+
+			const code_challenge = generators.codeChallenge(code_verifier);
+			const url = oidcClient.authorizationUrl({
+				scope: "openid email profile",
+				response_mode: "form_post",
+				code_challenge,
+				code_challenge_method: "S256",
+			});
+			console.log(url);
+			res.redirect(url);
+		});
+		app.use(express.urlencoded());
+		app.use(cookieParser());
+		app.post("/auth/callback/", async (req, res) => {
+			try {
+				const code_verifier = req.cookies["oidc_code_verifier"];
+				const params = oidcClient.callbackParams(req);
+				const tokenSet = await oidcClient.callback(
+					Config.values.oidc.baseUrl + "/auth/callback",
+					params,
+					{code_verifier}
+				);
+				console.log("received and validated tokens %j", tokenSet);
+				console.log("validated ID Token claims %j", tokenSet.claims());
+
+				const userinfo = await oidcClient.userinfo(tokenSet.access_token!);
+				console.log("userinfo %j", userinfo);
+				const username = userinfo.preferred_username!.toLocaleLowerCase();
+				let user = manager?.loadUser(username);
+				console.log("USER: ", user);
+
+				if (!user) {
+					if (Config.values.oidc.createUsers) {
+						const added = manager?.addUser(username, null, true);
+						console.log("User Added: ", added);
+					} else {
+						res.status(401).send("User does not exist and is not set to be created.");
+					}
+				}
+
+				user = manager?.loadUser(username);
+				if (user) {
+					user.generateToken((token) => {
+						res.setHeader("Content-Security-Policy", "script-src 'unsafe-inline'");
+						user.updateSession(user.calculateTokenHash(token), req.ip!, req);
+						res.send(`
+<script>
+localStorage.setItem("user", "${username}")
+localStorage.setItem("token", "${token}")
+// localStorage.setItem("thelounge.state.userlist", "true")
+// localStorage.setItem("settings", '{"syncSettings":true,"advanced":false,"autocomplete":true,"nickPostfix":"","coloredNicks":true,"desktopNotifications":false,"highlights":"","highlightExceptions":"","awayMessage":"","links":true,"motd":true,"notification":true,"notifyAllMessages":false,"showSeconds":false,"use12hClock":false,"statusMessages":"condensed","theme":"morning","media":true,"uploadCanvas":true,"userStyles":"","searchEnabled":true}')
+// localStorage.setItem("thelounge.networks.collapsed", "[]")
+// localStorage.setItem("thelounge.state.sidebar", "true")
+
+
+setTimeout(() => {window.location.href = '/'}, 2000)
+
+</script>
+Logging you in, Standby
+							`);
+					});
+				}
+			} catch (error) {
+				warn(error);
+				res.sendStatus(500);
+			}
+		});
+	}
 
 	if (Config.values.public && (Config.values.ldap || {}).enable) {
 		log.warn(

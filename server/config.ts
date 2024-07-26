@@ -10,6 +10,7 @@ import log from "./log";
 import Helper from "./helper";
 import Utils from "./command-line/utils";
 import Network from "./models/network";
+import {BaseClient, Client, Issuer} from "openid-client";
 
 // TODO: Type this
 export type WebIRC = {
@@ -85,6 +86,15 @@ type StoragePolicy = {
 	deletionPolicy: "statusOnly" | "everything";
 };
 
+type OIDC = {
+	enabled: boolean;
+	clientId: string;
+	clientSecret: string;
+	infoUrl: string;
+	baseUrl: string;
+	createUsers: boolean;
+};
+
 export type ConfigType = {
 	public: boolean;
 	host: string | undefined;
@@ -114,12 +124,14 @@ export type ConfigType = {
 	ldap: Ldap;
 	debug: Debug;
 	themeColor: string;
+	oidc: OIDC;
 };
 
 class Config {
 	values = require(path.resolve(
 		path.join(__dirname, "..", "defaults", "config.js")
 	)) as ConfigType;
+	oidcClient?: Client = undefined;
 	#homePath = "";
 
 	getHomePath() {
@@ -292,6 +304,20 @@ class Config {
 				log.warn(`run \`chmod o-x "${userLogsPath}"\` to correct it.`);
 			}
 		}
+	}
+
+	async getOidcClient() {
+		const issuer = await Issuer.discover(this.values.oidc.infoUrl);
+
+		console.log("Discovered issuer %s %O", issuer.issuer, issuer.metadata);
+		this.oidcClient = new issuer.Client({
+			client_id: this.values.oidc.clientId,
+			client_secret: this.values.oidc.clientSecret,
+			redirect_uris: [this.values.oidc.baseUrl + "/auth/callback"],
+			response_types: ["code"],
+		});
+
+		return this.oidcClient as BaseClient;
 	}
 }
 

@@ -490,6 +490,15 @@ module.exports = {
 		},
 	},
 
+	oidc: {
+		enabled: false,
+		clientId: "",
+		clientSecret: "",
+		infoUrl: "",
+		baseUrl: "",
+		createUsers: true,
+	},
+
 	// ## Debugging settings
 
 	// The `debug` object contains several settings to enable debugging in The
